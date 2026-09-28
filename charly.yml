@@ -1,7 +1,5 @@
-version: 2026.232.0520
 sherpa-onnx:
     candy:
-        version: 2026.144.1443
         description: |
             offline text-to-speech — the sherpa-onnx ONNX engine plus a baked en_US VITS voice, no runtime download
             Downloads the sherpa-onnx shared runtime release (executables under
