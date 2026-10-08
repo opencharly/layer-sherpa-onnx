@@ -17,7 +17,7 @@ The `sherpa-onnx` candy downloads the sherpa-onnx shared runtime release
 | Engine | `~/.local/share/sherpa-onnx/runtime/bin/sherpa-onnx-offline-tts` |
 | Libraries | `libsherpa-onnx-c-api.so`, `libonnxruntime.so` |
 | Voice | `vits-piper-en_US-lessac-high` (baked into the image) |
-| Env | `SHERPA_ONNX_RUNTIME_DIR`, `SHERPA_ONNX_MODEL_DIR` |
+| Env | `SHERPA_ONNX_RUNTIME_DIR`, `SHERPA_ONNX_MODEL_DIR`, `SHERPA_ONNX_VITS_DATA_DIR` |
 | Service / port | none |
 
 ## How to use it
@@ -38,11 +38,24 @@ Then, inside the built image (or on a dev host):
 ~/.local/share/sherpa-onnx/runtime/bin/sherpa-onnx-offline-tts \
   --vits-model=$SHERPA_ONNX_MODEL_DIR/vits-piper-en_US-lessac-high/en_US-lessac-high.onnx \
   --vits-tokens=$SHERPA_ONNX_MODEL_DIR/vits-piper-en_US-lessac-high/tokens.txt \
-  --output-wav=/tmp/out.wav "hello"
+  --vits-data-dir=$SHERPA_ONNX_VITS_DATA_DIR \
+  --output-filename=/tmp/out.wav "hello"
 ```
 
+Three things about that invocation, all measured against the pinned runtime
+(`SHERPA_VERSION: v1.12.23`): **every option takes the `=` form**, the output flag is
+**`--output-filename`** — there is no `--output-wav` (it exits 255 with
+`Invalid option --output-wav=<your path>`) — and **`--vits-data-dir` is required**: the
+piper voice speaks espeak-ng phonemes, so leaving it empty exits 255 with `Not a model
+using characters as modeling unit. Please provide --vits-lexicon if you leave
+--vits-data-dir empty`. That data ships inside the voice tarball this candy bakes and is
+exported as `$SHERPA_ONNX_VITS_DATA_DIR`, so the invocation above produces a WAV with no
+network fetch.
+
 The candy's `plan:` asserts the engine binary, its executability, the two shared
-libraries, the voice model, and its tokens file all ship in the image.
+libraries, the voice model, its tokens file, and the espeak-ng phoneme data all ship in
+the image — and runs that same synthesis invocation as a `check:`, so a voice that cannot
+synthesise fails the plan instead of passing every check.
 
 ## Layout
 
