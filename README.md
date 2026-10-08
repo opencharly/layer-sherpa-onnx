@@ -38,8 +38,14 @@ Then, inside the built image (or on a dev host):
 ~/.local/share/sherpa-onnx/runtime/bin/sherpa-onnx-offline-tts \
   --vits-model=$SHERPA_ONNX_MODEL_DIR/vits-piper-en_US-lessac-high/en_US-lessac-high.onnx \
   --vits-tokens=$SHERPA_ONNX_MODEL_DIR/vits-piper-en_US-lessac-high/tokens.txt \
-  --output-wav=/tmp/out.wav "hello"
+  --output-filename=/tmp/out.wav "hello"
 ```
+
+Two things about that invocation, both measured against the pinned runtime
+(`SHERPA_VERSION: v1.12.23`): **every option takes the `=` form**, and the output
+flag is **`--output-filename`** — there is no `--output-wav` (it exits 2 with
+`Invalid option --output-wav`). The example above synthesises the
+`vits-piper-en_US-lessac-high` voice this candy bakes.
 
 The candy's `plan:` asserts the engine binary, its executability, the two shared
 libraries, the voice model, and its tokens file all ship in the image.
