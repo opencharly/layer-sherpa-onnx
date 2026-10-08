@@ -7,11 +7,13 @@ sherpa-onnx:
             runtime/lib) and the vits-piper-en_US-lessac-high voice into
             ~/.local/share/sherpa-onnx. Verifiable end to end: the offline-tts
             engine binary is present and executable, its shared libraries are in
-            place, and the VITS voice model + tokens ship in the image so
+            place, the VITS voice model + tokens ship in the image, and the baked
+            voice synthesises a wav file through the exported runtime contract, so
             synthesis runs fully offline with no network fetch.
         env:
             SHERPA_ONNX_RUNTIME_DIR: "~/.local/share/sherpa-onnx/runtime"
             SHERPA_ONNX_MODEL_DIR: "~/.local/share/sherpa-onnx/models"
+            SHERPA_ONNX_VITS_DATA_DIR: "~/.local/share/sherpa-onnx/models/vits-piper-en_US-lessac-high/espeak-ng-data"
         var:
             SHERPA_VERSION: v1.12.23
         plan:
@@ -68,6 +70,30 @@ sherpa-onnx:
               file:
                 file: ${HOME}/.local/share/sherpa-onnx/models/vits-piper-en_US-lessac-high/tokens.txt
                 exists: true
+            - check: the espeak-ng phoneme data the baked VITS voice speaks through ships next to the model
+              id: vits-espeak-data
+              file:
+                file: ${HOME}/.local/share/sherpa-onnx/models/vits-piper-en_US-lessac-high/espeak-ng-data
+                exists: true
+            # Brace-less refs on purpose: charly's check-var resolver scans `${IDENT}`
+            # and skips a step whose variable it cannot resolve in the build context, so
+            # `${SHERPA_ONNX_VITS_DATA_DIR}` here would turn this check into a silent
+            # skip. Brace-less the shell reads the container's exported env — and an
+            # absent export fails the check instead of skipping it.
+            - check: the baked VITS voice synthesises a wav file through the exported runtime contract
+              id: vits-synthesis
+              exit_status: 0
+              command: |
+                OUT=/tmp/charly-sherpa-onnx-synthesis.wav
+                rm -f "$OUT"
+                "$SHERPA_ONNX_RUNTIME_DIR/bin/sherpa-onnx-offline-tts" \
+                  --vits-model="$SHERPA_ONNX_MODEL_DIR/vits-piper-en_US-lessac-high/en_US-lessac-high.onnx" \
+                  --vits-tokens="$SHERPA_ONNX_MODEL_DIR/vits-piper-en_US-lessac-high/tokens.txt" \
+                  --vits-data-dir="$SHERPA_ONNX_VITS_DATA_DIR" \
+                  --output-filename="$OUT" \
+                  "charly sherpa-onnx synthesis check"
+                test -s "$OUT"
+                [ "$(head -c 4 "$OUT")" = "RIFF" ]
             - check: file=${HOME}/.local/share/sherpa-onnx/runtime/bin/sherpa-onnx
               id: sherpa-onnx-cli-binary
               file:
@@ -98,6 +124,7 @@ sherpa-onnx-skill:
             |----------|-------|
             | `SHERPA_ONNX_RUNTIME_DIR` | `~/.local/share/sherpa-onnx/runtime` |
             | `SHERPA_ONNX_MODEL_DIR` | `~/.local/share/sherpa-onnx/models` |
+            | `SHERPA_ONNX_VITS_DATA_DIR` | `~/.local/share/sherpa-onnx/models/vits-piper-en_US-lessac-high/espeak-ng-data` |
             
             ## Usage
             
@@ -108,6 +135,25 @@ sherpa-onnx-skill:
                 base: fedora
                 candy: [sherpa-onnx]
             ```
+            
+            ## Synthesise Speech
+            
+            The baked `vits-piper-en_US-lessac-high` voice synthesises offline. Every option
+            takes the `=` form, and `--vits-data-dir` is required: the piper voice speaks
+            espeak-ng phonemes, so leaving it empty exits 255 with `Not a model using
+            characters as modeling unit`. The candy exports that data dir, so the invocation
+            below works with nothing but the installed runtime:
+            
+            ```bash
+            ~/.local/share/sherpa-onnx/runtime/bin/sherpa-onnx-offline-tts \
+              --vits-model=$SHERPA_ONNX_MODEL_DIR/vits-piper-en_US-lessac-high/en_US-lessac-high.onnx \
+              --vits-tokens=$SHERPA_ONNX_MODEL_DIR/vits-piper-en_US-lessac-high/tokens.txt \
+              --vits-data-dir=$SHERPA_ONNX_VITS_DATA_DIR \
+              --output-filename=/tmp/out.wav "hello"
+            ```
+            
+            The candy's `plan:` runs that same invocation as a `check:`, so a voice that
+            cannot synthesise fails the plan instead of passing every check.
             
             ## Used In Boxes
             

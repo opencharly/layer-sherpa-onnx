@@ -16,7 +16,7 @@ Canonical files:
 ## Load these skills first (R0)
 
 - `/charly-tools:sherpa-onnx` — the owning skill. The pinned runtime release, the
-  baked voice, the runtime/model dir env vars, and the offline-synthesis
+  baked voice, the runtime/model/vits-data dir env vars, and the offline-synthesis
   contract. Load before editing or troubleshooting the candy.
 - `/charly-image:layer` — the candy authoring reference (`charly.yml` schema,
   `plan:` step verbs incl. `command:`/`check:`, `env:`). Load before editing any
@@ -31,8 +31,11 @@ Canonical files:
   validates.
 - The candy's `plan:` `check:` steps are the functional evidence: the
   `sherpa-onnx-offline-tts` binary and its executable bit, the C-API + ONNX
-  Runtime shared libraries, the VITS voice model, and its tokens file all ship in
-  the image — so synthesis runs with no network fetch.
+  Runtime shared libraries, the VITS voice model, its tokens file, and the
+  espeak-ng phoneme data all ship in the image, and `vits-synthesis` synthesises a
+  WAV through the exported env contract (`SHERPA_ONNX_VITS_DATA_DIR`) — so
+  synthesis runs with no network fetch, and a voice that cannot synthesise fails
+  the plan instead of passing it.
 - The download step is architecture-switched (`x86_64` → `linux-x64`,
   `aarch64` → `linux-aarch64`); keep both arms valid.
 
